@@ -6,16 +6,16 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M1 - Application
+## Current Milestone: M4 - Terraform + AKS Foundation
 
 ```text
-Frontend
-	|
-	v
-FastAPI
-	|
-	v
-SQLite
+Terraform -> Azure Resource Group + VNet + ACR + AKS
+                                      |
+                                      v
+                          Kubernetes API Deployment
+                                      |
+                                      v
+                             FastAPI + SQLite
 ```
 
 The M1 application provides a small tenant-aware customer and transaction view for `bank-a`, `bank-b`, and `bank-c`. The API requires `X-Tenant-ID` and filters tenant-owned database queries on the server. This is application-level tenant context and tenant-scoped data access, **not authentication**. Anyone able to reach this local demo can select a tenant; there is no identity verification or production security boundary. Stronger security and platform/infrastructure isolation are future work.
@@ -116,14 +116,20 @@ az acr repository show --name "$ACR_NAME" --image "multi-tenant-saas/api:<git-sh
 docker pull "$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)/multi-tenant-saas/api:<git-sha>"
 ```
 
-ACR is the image registry intended for a later AKS milestone; this does not deploy to AKS. For resource naming, tagging, digest identity, verification, and cleanup details, see [docs/azure-container-registry.md](docs/azure-container-registry.md).
+This M3 workflow publishes the image used by the M4 AKS deployment; it does not itself deploy to AKS. For resource naming, tagging, digest identity, verification, and cleanup details, see [docs/azure-container-registry.md](docs/azure-container-registry.md).
+
+## M4 - Terraform + AKS Foundation
+
+M4 provisions a development Azure platform with Terraform and deploys the existing API using Kubernetes manifests. It uses the AKS kubelet managed identity with `AcrPull`; it does not use ACR admin credentials or static image pull secrets. Follow the end-to-end prerequisites, authentication, Terraform, image publishing, deployment, verification, cleanup, and limitations guide in [infrastructure/terraform/README.md](infrastructure/terraform/README.md).
+
+The API's SQLite database is container-local and ephemeral in AKS. This is only a transitional demonstration, not persistent or production storage; persistence is deferred to a later milestone. AKS and its Azure networking and compute resources incur costs.
 
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.
 2. **M2 - Docker:** package this same application in containers.
 3. **M3 - ACR:** publish versioned images to Azure Container Registry.
-4. **M4 - AKS:** deploy the application to Azure Kubernetes Service.
+4. **M4 - Terraform + AKS Foundation:** provision Azure networking, ACR, AKS, and deploy the existing API.
 5. **M5 - Strong Tenant Isolation & Platform Controls:** add stronger production-style isolation controls at the platform/infrastructure level.
 6. **M6 - Tenant Onboarding:** introduce a controlled tenant provisioning and lifecycle workflow.
 7. **M7 - CI/CD + Progressive Delivery:** automate validation, staged rollout, canary evaluation, and rollback.
@@ -132,4 +138,4 @@ ACR is the image registry intended for a later AKS milestone; this does not depl
 10. **M10 - Multi-Region DR/BCP:** define and test disaster recovery and business continuity.
 11. **M11 - SARI:** explore a human-approved detect-to-verify remediation workflow.
 
-Azure, ACR, AKS, Docker, PostgreSQL, Kafka or another message broker, multi-region recovery, and SARI are future capabilities; they are not part of M1. See [docs/development-roadmap.md](docs/development-roadmap.md) for the milestone sequence and [docs/application-architecture.md](docs/application-architecture.md) for the intended application evolution.
+Azure, ACR, AKS, and Docker extend the early milestones; PostgreSQL, Kafka or another message broker, multi-region recovery, and SARI remain future capabilities. See [docs/development-roadmap.md](docs/development-roadmap.md) for the milestone sequence and [docs/application-architecture.md](docs/application-architecture.md) for the intended application evolution.

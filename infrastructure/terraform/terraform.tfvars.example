@@ -1,0 +1,11 @@
+location                    = "eastus"
+resource_group_name         = "rg-mt-saas-dev"
+acr_name                    = "replacewithuniqueacrname"
+cluster_name                = "aks-mt-saas-dev"
+vnet_address_space          = "10.20.0.0/16"
+aks_subnet_address_prefix   = "10.20.1.0/24"
+node_count                  = 1
+node_vm_size                = "Standard_D2s_v3"
+kubernetes_version          = null
+environment                 = "dev"
+api_image                   = "REPLACE_WITH_ACR_LOGIN_SERVER/multi-tenant-saas/api:REPLACE_WITH_GIT_SHA"
