@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f5f1">
+    <title>Multi-Tenant Banking SaaS</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="wordmark" href="./" aria-label="Ledgerline home">
+        <span class="wordmark-mark" aria-hidden="true">L</span>
+        <span>ledgerline</span>
+      </a>
+      <span class="environment"><span class="environment-dot"></span> LOCAL DEMO</span>
+    </header>
+
+    <main>
+      <section class="page-heading" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">TENANT WORKSPACE <span> / </span> M1</p>
+          <h1 id="page-title">Banking overview</h1>
+          <p class="intro">A fictional account and activity view for the selected institution.</p>
+        </div>
+        <label class="tenant-picker" for="tenant-select">
+          <span>Institution</span>
+          <select id="tenant-select" name="tenant">
+            <option value="bank-a">Bank A</option>
+            <option value="bank-b">Bank B</option>
+            <option value="bank-c">Bank C</option>
+          </select>
+        </label>
+      </section>
+
+      <p id="error-message" class="error-message" role="alert" hidden></p>
+
+      <section class="summary-band" aria-labelledby="tenant-name">
+        <div class="summary-copy">
+          <p class="eyebrow">CURRENT TENANT</p>
+          <h2 id="tenant-name" aria-live="polite">Loading...</h2>
+        </div>
+        <p class="tenant-id">TENANT ID <strong id="tenant-id">--</strong></p>
+      </section>
+
+      <div class="data-grid">
+        <section class="data-section" aria-labelledby="customers-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">DIRECTORY</p>
+              <h2 id="customers-title">Customers</h2>
+            </div>
+            <span id="customer-count" class="count">--</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th scope="col">Name</th><th scope="col">Contact</th></tr>
+              </thead>
+              <tbody id="customer-rows">
+                <tr><td class="empty-state" colspan="2">Loading customers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="data-section" aria-labelledby="transactions-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">RECENT ACTIVITY</p>
+              <h2 id="transactions-title">Transactions</h2>
+            </div>
+            <span id="transaction-count" class="count">--</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th scope="col">Activity</th><th scope="col">Date</th><th scope="col">Amount</th></tr>
+              </thead>
+              <tbody id="transaction-rows">
+                <tr><td class="empty-state" colspan="3">Loading transactions...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <footer class="demo-note">
+        <span class="note-mark" aria-hidden="true">i</span>
+        <p>Fictional demonstration data. Tenant selection is not authentication.</p>
+      </footer>
+    </main>
+    <script src="app.js" defer></script>
+  </body>
+</html>

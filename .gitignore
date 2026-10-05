@@ -1,0 +1,21 @@
+# Local development artifacts
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+.venv/
+
+# Editor and operating system files
+.DS_Store
+.vscode/
+.idea/
+
+# Build and test output
+dist/
+build/
+coverage/
+.pytest_cache/
+__pycache__/
+*.py[cod]

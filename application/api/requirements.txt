@@ -1,0 +1,7 @@
+fastapi>=0.115,<0.130
+anyio>=4.4,<4.12
+httpx>=0.27,<1.0
+pydantic>=2.8,<3.0
+pytest>=8.3,<9.0
+sqlalchemy>=2.0,<3.0
+uvicorn>=0.30,<1.0
