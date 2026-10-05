@@ -10,7 +10,7 @@ from app.seed import seed_database
 
 
 @pytest.fixture
-def client():
+def database_session_factory():
     test_engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -19,9 +19,14 @@ def client():
     Base.metadata.create_all(bind=test_engine)
     seed_database(test_engine)
     test_session_factory = sessionmaker(bind=test_engine, autoflush=False, autocommit=False)
+    yield test_session_factory
+    test_engine.dispose()
 
+
+@pytest.fixture
+def client(database_session_factory):
     def override_get_db():
-        session = test_session_factory()
+        session = database_session_factory()
         try:
             yield session
         finally:
@@ -32,4 +37,3 @@ def client():
     with TestClient(application) as test_client:
         yield test_client
     application.dependency_overrides.clear()
-    test_engine.dispose()

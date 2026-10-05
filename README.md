@@ -6,7 +6,7 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M5 - Strong Tenant Isolation & Platform Controls
+## Current Milestone: M6 - Tenant Onboarding & Lifecycle
 
 ```text
 Terraform -> Azure Resource Group + VNet + ACR + AKS
@@ -128,6 +128,10 @@ The API's SQLite database is container-local and ephemeral in AKS. This is only 
 
 M5 centralizes tenant context and tenant-scoped repository access, adds tenant-filtered resource reads with cross-tenant isolation tests, and hardens the Kubernetes workload with a dedicated permissionless ServiceAccount, resource governance, NetworkPolicy, and non-root container settings. See [docs/tenant-isolation.md](docs/tenant-isolation.md) for the trust boundary, controls, and limitations. The M4 AKS configuration enables Azure network policy enforcement so the Kubernetes policies are effective.
 
+## M6 - Tenant Onboarding & Lifecycle
+
+M6 adds administrative tenant creation, lookup, listing, suspension, activation, and deactivation endpoints backed by persisted lifecycle state and explicit transition rules. Suspended and deactivated tenants cannot access business APIs; tenant records and business data are retained. The control-plane API is intentionally unauthenticated and is not a production authorization boundary. **M6 implements application-level tenant lifecycle management. Automated AKS tenant provisioning is a future platform milestone.** See [docs/tenant-lifecycle.md](docs/tenant-lifecycle.md) for endpoints, transitions, and limitations.
+
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.
@@ -135,7 +139,7 @@ M5 centralizes tenant context and tenant-scoped repository access, adds tenant-f
 3. **M3 - ACR:** publish versioned images to Azure Container Registry.
 4. **M4 - Terraform + AKS Foundation:** provision Azure networking, ACR, AKS, and deploy the existing API.
 5. **M5 - Strong Tenant Isolation & Platform Controls:** centralize tenant-scoped API access and add Kubernetes workload isolation and governance.
-6. **M6 - Tenant Onboarding:** introduce a controlled tenant provisioning and lifecycle workflow.
+6. **M6 - Tenant Onboarding & Lifecycle:** onboard tenants through an application control plane and enforce persisted lifecycle states.
 7. **M7 - CI/CD + Progressive Delivery:** automate validation, staged rollout, canary evaluation, and rollback.
 8. **M8 - Observability + SLO:** add telemetry, dashboards, alerts, SLIs, SLOs, and error-budget practices.
 9. **M9 - FinOps + Capacity:** model tenant costs and plan capacity from observed demand.

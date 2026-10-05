@@ -24,12 +24,6 @@ Tenant configuration may include supported product settings and operational limi
 
 ## Tenant Lifecycle
 
-The expected lifecycle is:
+M6 persists tenant status (`ACTIVE`, `SUSPENDED`, or `DEACTIVATED`) and UTC creation/update timestamps. Tenants can be onboarded through the admin API, and business requests are allowed only while a tenant is active. Suspension and deactivation retain tenant and business records; see [tenant-lifecycle.md](./tenant-lifecycle.md) for the allowed transitions and API details.
 
-1. **Provision:** create a tenant record, assign a stable identifier, and apply validated defaults.
-2. **Configure:** set permitted tenant-specific options and establish authorized users.
-3. **Operate:** serve tenant-scoped requests and monitor tenant-level health and usage where available.
-4. **Change:** validate and audit configuration changes without changing another tenant's state.
-5. **Suspend or offboard:** restrict access and handle data retention or deletion according to an explicitly documented policy.
-
-Automated onboarding, audit controls, retention policy, and tenant self-service are future work, not M1 features. M2 and later cloud or platform capabilities do not change the M1 limitation that `X-Tenant-ID` is not authentication.
+**M6 implements application-level tenant lifecycle management. Automated AKS tenant provisioning is a future platform milestone.** Tenant namespace/configuration identifiers are planning metadata only; M6 does not create namespaces, quotas, policies, or other cloud resources. The admin API is unauthenticated and is not a production authorization boundary. Auditing, retention policy, identity-backed administration, automated provisioning, and tenant self-service remain future work.

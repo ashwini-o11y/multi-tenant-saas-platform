@@ -1,17 +1,50 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+from enum import StrEnum
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from app.database import Base
+
+
+class TenantStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    DEACTIVATED = "DEACTIVATED"
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Tenant(Base):
     __tablename__ = "tenants"
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column("id", String(50), primary_key=True)
+    id = synonym("tenant_id")
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[TenantStatus] = mapped_column(
+        Enum(
+            TenantStatus,
+            name="tenant_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            length=20,
+        ),
+        nullable=False,
+        default=TenantStatus.ACTIVE,
+        server_default=text("'ACTIVE'"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+    platform_namespace_id: Mapped[str] = mapped_column(String(63), nullable=False)
+    platform_configuration_id: Mapped[str] = mapped_column(String(100), nullable=False)
     customers: Mapped[list["Customer"]] = relationship(back_populates="tenant")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="tenant")
 

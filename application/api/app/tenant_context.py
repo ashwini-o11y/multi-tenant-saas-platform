@@ -5,7 +5,7 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Tenant
+from app.models import Tenant, TenantStatus
 
 
 @dataclass(frozen=True)
@@ -25,5 +25,7 @@ def get_tenant_context(
     tenant = session.get(Tenant, normalized_tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
+    if tenant.status is not TenantStatus.ACTIVE:
+        raise HTTPException(status_code=403, detail="Tenant is not active")
 
-    return TenantContext(tenant_id=tenant.id, tenant=tenant)
+    return TenantContext(tenant_id=tenant.tenant_id, tenant=tenant)
