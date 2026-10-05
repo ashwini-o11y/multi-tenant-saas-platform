@@ -64,6 +64,25 @@ python -m http.server 5500 --directory application/frontend
 
 Open `http://127.0.0.1:5500`. Keep the API and frontend servers running while using the page. The default database is `application/api/data/banking_saas.sqlite3`; it is local and ignored by Git. The seed command is safe to rerun and does not replace existing tenant data.
 
+## Run with Docker
+
+Build and start the API container:
+
+```bash
+docker compose build
+docker compose up -d
+docker compose ps
+curl http://localhost:8000/health
+```
+
+SQLite is stored in the `banking_data` Docker named volume, so its data survives API container recreation and `docker compose down`. To stop the stack:
+
+```bash
+docker compose down
+```
+
+The named volume is intentionally retained when the stack stops. Removing it with `docker compose down -v` deletes the local SQLite data.
+
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.

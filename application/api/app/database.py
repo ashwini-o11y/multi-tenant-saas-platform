@@ -1,4 +1,5 @@
 from collections.abc import Generator
+import os
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -9,7 +10,12 @@ class Base(DeclarativeBase):
     pass
 
 
-DATABASE_PATH = Path(__file__).resolve().parents[1] / "data" / "banking_saas.sqlite3"
+DATABASE_PATH = Path(
+    os.environ.get(
+        "DATABASE_PATH",
+        str(Path(__file__).resolve().parents[1] / "data" / "banking_saas.sqlite3"),
+    )
+)
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_engine(
