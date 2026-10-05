@@ -10,7 +10,3 @@ resources:
   - network-policy.yaml
   - deployment.yaml
   - service.yaml
-images:
-  - name: multi-tenant-saas/api
-    newName: REPLACE_WITH_ACR_LOGIN_SERVER/multi-tenant-saas/api
-    newTag: REPLACE_WITH_GIT_SHA

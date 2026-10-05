@@ -39,6 +39,8 @@ cp infrastructure/terraform/terraform.tfvars.example infrastructure/terraform/te
 
 Edit `terraform.tfvars` to configure the Azure location, resource group, ACR, AKS name and sizing, network CIDRs, environment, and API image handoff. The `api_image` input is exposed as an output for operator reference; Kubernetes manifests remain a separate deployment layer and are configured independently below. The defaults use one `Standard_D2s_v3` node and the Azure-selected Kubernetes version when `kubernetes_version` is null. Set a Kubernetes version explicitly if the selected Azure region or policy requires it. Terraform variables are described in [variables.tf](./variables.tf).
 
+To grant the M7 GitHub deployment identity non-admin access, set `aks_deployment_principal_object_id` to the Microsoft Entra service principal object ID corresponding to `AZURE_DEPLOY_CLIENT_ID`. Terraform enables managed Entra authentication and Azure RBAC for Kubernetes, grants `Azure Kubernetes Service Cluster User Role` at AKS resource scope, `Azure Kubernetes Service RBAC Writer` only at the `mt-saas` namespace scope, and `Reader` on ACR to resolve the image registry address. The namespace must exist before its role assignment is made. For a new cluster, initially apply Terraform with a null principal ID, bootstrap the namespace/workload using an authorized platform operator, then set the principal object ID and apply again. Existing M4 clusters where the namespace already exists can configure the ID before applying. The dev overlay omits namespace creation. Review the role limitations in [docs/cicd.md](../../docs/cicd.md). These are configuration changes only; they have not been applied to Azure.
+
 Initialize, review, and apply:
 
 ```bash
@@ -80,11 +82,11 @@ AKS_NAME="$(terraform -chdir=infrastructure/terraform output -raw aks_cluster_na
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME"
 ```
 
-Before deploying, edit `kubernetes/base/kustomization.yaml`: set `images[0].newName` to `${ACR_LOGIN_SERVER}/multi-tenant-saas/api` and `images[0].newTag` to the `GIT_SHA` printed by the build workflow. The checked-in placeholders are intentionally not deployable. Then render and apply the manifests:
+Before deploying manually, edit `kubernetes/overlays/dev/kustomization.yaml`: set `images[0].newName` to `${ACR_LOGIN_SERVER}/multi-tenant-saas/api` and `images[0].newTag` to the `GIT_SHA` printed by the build workflow. The checked-in placeholders are intentionally not deployable. The M7 deployment workflow and `scripts/deploy-dev.sh` perform this structured image update in a temporary overlay copy. Then render and apply the dev manifests:
 
 ```bash
-kubectl kustomize kubernetes/base
-kubectl apply -k kubernetes/base
+kubectl kustomize kubernetes/overlays/dev
+kubectl apply -k kubernetes/overlays/dev
 ```
 
 AKS pulls from ACR using its kubelet managed identity and the `AcrPull` role assignment created by Terraform; no image pull secret is required. The Kubernetes namespace is `mt-saas`; the API Deployment and internal `ClusterIP` Service are `multi-tenant-saas-api`.
@@ -121,7 +123,7 @@ Expected response:
 This permanently deletes the Azure resources managed by this Terraform configuration. Remove the Kubernetes workload first if desired, and inspect the Terraform plan carefully before confirming:
 
 ```bash
-kubectl delete -k kubernetes/base
+kubectl delete -k kubernetes/overlays/dev
 terraform -chdir=infrastructure/terraform destroy
 ```
 

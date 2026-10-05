@@ -1,0 +1,60 @@
+name: Build and publish API image
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish immutable API image to ACR
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ACR_NAME: ${{ vars.ACR_NAME }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure with workload identity federation
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push Git-SHA image
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ACR_NAME" ]]; then
+            printf 'Repository variable ACR_NAME is required.\n' >&2
+            exit 2
+          fi
+
+          acr_login_server="$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)"
+          if [[ -z "$acr_login_server" ]]; then
+            printf 'Could not resolve the ACR login server for %s.\n' "$ACR_NAME" >&2
+            exit 1
+          fi
+
+          image="$acr_login_server/multi-tenant-saas/api:$GITHUB_SHA"
+          az acr login --name "$ACR_NAME"
+          docker build \
+            --file application/api/Dockerfile \
+            --tag "$image" \
+            application/api
+          docker push "$image"
+          printf 'Published immutable-by-convention image: %s\n' "$image"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"

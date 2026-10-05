@@ -10,7 +10,7 @@ The milestones evolve one fictional banking SaaS application. They are ordered t
 | M4 | Terraform + AKS Foundation | Provision Azure networking, ACR, AKS, and deploy the existing API. |
 | M5 | Strong Tenant Isolation & Platform Controls | Centralize tenant context and data access; add Kubernetes workload security, resource governance, and network policy controls. |
 | M6 | Tenant Onboarding & Lifecycle | Onboard tenants through an application control plane, persist lifecycle state, enforce allowed transitions, and retain tenant data on suspension/deactivation. Automated AKS provisioning remains future work. |
-| M7 | CI/CD + Progressive Delivery | Automate validation and delivery with staged rollout, canary evaluation, and rollback. |
+| M7 | SaaS CI/CD + Progressive Delivery | Validate pull requests and main, publish immutable Git-SHA images to ACR, and manually promote selected artifacts to dev with health-gated rollout and rollback. |
 | M8 | Observability + SLO | Add OpenTelemetry signals, dashboards, alerts, SLIs, SLOs, and error-budget practices. |
 | M9 | FinOps + Capacity | Estimate cost per tenant, track meaningful usage, and plan capacity based on observed demand. |
 | M10 | Multi-Region DR/BCP | Define recovery objectives and validate backup, restore, failover, and business continuity procedures. |

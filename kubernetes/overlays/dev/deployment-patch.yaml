@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multi-tenant-saas-api
+  namespace: mt-saas
+spec:
+  template:
+    metadata:
+      annotations:
+        app.kubernetes.io/version: REPLACE_WITH_GIT_SHA
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1

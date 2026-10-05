@@ -1,0 +1,84 @@
+name: Deploy API to dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Full Git SHA tag of an image already published to ACR
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-api-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy selected image to dev
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+      AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set up kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: "v0.1.4"
+
+      - name: Log in to Azure with workload identity federation
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure AKS access
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$ACR_NAME" ]] || { printf 'Repository variable ACR_NAME is required.\n' >&2; exit 2; }
+          [[ -n "$AKS_RESOURCE_GROUP" ]] || { printf 'Repository variable AKS_RESOURCE_GROUP is required.\n' >&2; exit 2; }
+          [[ -n "$AKS_CLUSTER_NAME" ]] || { printf 'Repository variable AKS_CLUSTER_NAME is required.\n' >&2; exit 2; }
+          az aks get-credentials \
+            --resource-group "$AKS_RESOURCE_GROUP" \
+            --name "$AKS_CLUSTER_NAME" \
+            --overwrite-existing
+          kubelogin convert-kubeconfig -l azurecli
+
+      - name: Set up Kustomize
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+
+      - name: Install pinned Kustomize
+        run: |
+          go install sigs.k8s.io/kustomize/kustomize/v5@v5.6.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve ACR and deploy immutable image
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ACR_LOGIN_SERVER
+          ACR_LOGIN_SERVER="$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)"
+          if [[ -z "$ACR_LOGIN_SERVER" ]]; then
+            printf 'Could not resolve the ACR login server for %s.\n' "$ACR_NAME" >&2
+            exit 1
+          fi
+          ./scripts/deploy-dev.sh

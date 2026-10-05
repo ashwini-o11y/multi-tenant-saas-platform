@@ -6,7 +6,7 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M6 - Tenant Onboarding & Lifecycle
+## Current Milestone: M7 - SaaS CI/CD + Progressive Delivery
 
 ```text
 Terraform -> Azure Resource Group + VNet + ACR + AKS
@@ -132,6 +132,10 @@ M5 centralizes tenant context and tenant-scoped repository access, adds tenant-f
 
 M6 adds administrative tenant creation, lookup, listing, suspension, activation, and deactivation endpoints backed by persisted lifecycle state and explicit transition rules. Suspended and deactivated tenants cannot access business APIs; tenant records and business data are retained. The control-plane API is intentionally unauthenticated and is not a production authorization boundary. **M6 implements application-level tenant lifecycle management. Automated AKS tenant provisioning is a future platform milestone.** See [docs/tenant-lifecycle.md](docs/tenant-lifecycle.md) for endpoints, transitions, and limitations.
 
+## M7 - SaaS CI/CD + Progressive Delivery
+
+M7 adds pull-request/main CI, Git-SHA-tagged ACR publishing from `main`, and a separately dispatched dev deployment that consumes a selected immutable image tag. The dev rollout uses Kubernetes readiness gates and automatic rollback on timeout; deployment release identity is recorded in pod-template metadata. See [docs/cicd.md](docs/cicd.md) and [docs/release-management.md](docs/release-management.md).
+
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.
@@ -140,7 +144,7 @@ M6 adds administrative tenant creation, lookup, listing, suspension, activation,
 4. **M4 - Terraform + AKS Foundation:** provision Azure networking, ACR, AKS, and deploy the existing API.
 5. **M5 - Strong Tenant Isolation & Platform Controls:** centralize tenant-scoped API access and add Kubernetes workload isolation and governance.
 6. **M6 - Tenant Onboarding & Lifecycle:** onboard tenants through an application control plane and enforce persisted lifecycle states.
-7. **M7 - CI/CD + Progressive Delivery:** automate validation, staged rollout, canary evaluation, and rollback.
+7. **M7 - CI/CD + Progressive Delivery:** validate changes, publish Git-SHA artifacts, and deploy with health-gated rollout and rollback.
 8. **M8 - Observability + SLO:** add telemetry, dashboards, alerts, SLIs, SLOs, and error-budget practices.
 9. **M9 - FinOps + Capacity:** model tenant costs and plan capacity from observed demand.
 10. **M10 - Multi-Region DR/BCP:** define and test disaster recovery and business continuity.
