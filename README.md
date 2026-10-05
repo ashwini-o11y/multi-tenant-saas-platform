@@ -83,6 +83,41 @@ docker compose down
 
 The named volume is intentionally retained when the stack stops. Removing it with `docker compose down -v` deletes the local SQLite data.
 
+## Azure Container Registry
+
+Prerequisites: Azure CLI, Docker, an Azure subscription, permission to create the resource group and registry, and `AcrPush` access to the registry. Sign in and select the subscription, then create the development resource group and Basic registry (choose a globally unique lowercase registry name):
+
+```bash
+az login
+export AZURE_SUBSCRIPTION_ID="<subscription-id>"
+export AZURE_LOCATION="<azure-region>"
+export RESOURCE_GROUP="rg-mt-saas-dev"
+export ACR_NAME="acrmtsaas<unique-suffix>"
+az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+az account show --output table
+az group create --name "$RESOURCE_GROUP" --location "$AZURE_LOCATION"
+az acr create --resource-group "$RESOURCE_GROUP" --name "$ACR_NAME" --sku Basic --admin-enabled false
+az acr login --name "$ACR_NAME"
+```
+
+The reusable script builds from the existing M2 Dockerfile, pushes the full Git SHA tag, and also pushes `dev` by default. Set `PUSH_DEV_TAG=false` to omit the mutable convenience tag:
+
+```bash
+export ACR_NAME
+./scripts/acr-build-push.sh
+```
+
+Verify the repository, tags, and digest, then pull by immutable SHA:
+
+```bash
+az acr repository list --name "$ACR_NAME" --output table
+az acr repository show-tags --name "$ACR_NAME" --repository multi-tenant-saas/api --output table
+az acr repository show --name "$ACR_NAME" --image "multi-tenant-saas/api:<git-sha>" --query digest --output tsv
+docker pull "$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)/multi-tenant-saas/api:<git-sha>"
+```
+
+ACR is the image registry intended for a later AKS milestone; this does not deploy to AKS. For resource naming, tagging, digest identity, verification, and cleanup details, see [docs/azure-container-registry.md](docs/azure-container-registry.md).
+
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.
