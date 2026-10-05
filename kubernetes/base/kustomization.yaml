@@ -3,6 +3,11 @@ kind: Kustomization
 namespace: mt-saas
 resources:
   - namespace.yaml
+  - service-account.yaml
+  - configmap.yaml
+  - resource-quota.yaml
+  - limit-range.yaml
+  - network-policy.yaml
   - deployment.yaml
   - service.yaml
 images:

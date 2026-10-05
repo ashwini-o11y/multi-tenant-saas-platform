@@ -15,19 +15,31 @@ spec:
       labels:
         app: multi-tenant-saas-api
     spec:
+      serviceAccountName: multi-tenant-saas-api
+      automountServiceAccountToken: false
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
         fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: multi-tenant-saas/api:REPLACE_WITH_GIT_SHA
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: http
               containerPort: 8000
               protocol: TCP
-          env:
-            - name: DATABASE_PATH
-              value: /data/app.db
+          envFrom:
+            - configMapRef:
+                name: multi-tenant-saas-api-config
           resources:
             requests:
               cpu: 100m

@@ -6,7 +6,7 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M4 - Terraform + AKS Foundation
+## Current Milestone: M5 - Strong Tenant Isolation & Platform Controls
 
 ```text
 Terraform -> Azure Resource Group + VNet + ACR + AKS
@@ -18,7 +18,7 @@ Terraform -> Azure Resource Group + VNet + ACR + AKS
                              FastAPI + SQLite
 ```
 
-The M1 application provides a small tenant-aware customer and transaction view for `bank-a`, `bank-b`, and `bank-c`. The API requires `X-Tenant-ID` and filters tenant-owned database queries on the server. This is application-level tenant context and tenant-scoped data access, **not authentication**. Anyone able to reach this local demo can select a tenant; there is no identity verification or production security boundary. Stronger security and platform/infrastructure isolation are future work.
+The M1 application provides a small tenant-aware customer and transaction view for `bank-a`, `bank-b`, and `bank-c`. The API validates a centralized tenant context and uses tenant-scoped data access. **X-Tenant-ID is a simplified tenant selector for this portfolio POC and is not an authentication or authorization mechanism.** Anyone able to reach this demo can select a tenant; identity-backed tenant authentication and authorization remain future work.
 
 ## Run Locally
 
@@ -124,13 +124,17 @@ M4 provisions a development Azure platform with Terraform and deploys the existi
 
 The API's SQLite database is container-local and ephemeral in AKS. This is only a transitional demonstration, not persistent or production storage; persistence is deferred to a later milestone. AKS and its Azure networking and compute resources incur costs.
 
+## M5 - Strong Tenant Isolation & Platform Controls
+
+M5 centralizes tenant context and tenant-scoped repository access, adds tenant-filtered resource reads with cross-tenant isolation tests, and hardens the Kubernetes workload with a dedicated permissionless ServiceAccount, resource governance, NetworkPolicy, and non-root container settings. See [docs/tenant-isolation.md](docs/tenant-isolation.md) for the trust boundary, controls, and limitations. The M4 AKS configuration enables Azure network policy enforcement so the Kubernetes policies are effective.
+
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.
 2. **M2 - Docker:** package this same application in containers.
 3. **M3 - ACR:** publish versioned images to Azure Container Registry.
 4. **M4 - Terraform + AKS Foundation:** provision Azure networking, ACR, AKS, and deploy the existing API.
-5. **M5 - Strong Tenant Isolation & Platform Controls:** add stronger production-style isolation controls at the platform/infrastructure level.
+5. **M5 - Strong Tenant Isolation & Platform Controls:** centralize tenant-scoped API access and add Kubernetes workload isolation and governance.
 6. **M6 - Tenant Onboarding:** introduce a controlled tenant provisioning and lifecycle workflow.
 7. **M7 - CI/CD + Progressive Delivery:** automate validation, staged rollout, canary evaluation, and rollback.
 8. **M8 - Observability + SLO:** add telemetry, dashboards, alerts, SLIs, SLOs, and error-budget practices.
@@ -138,4 +142,4 @@ The API's SQLite database is container-local and ephemeral in AKS. This is only 
 10. **M10 - Multi-Region DR/BCP:** define and test disaster recovery and business continuity.
 11. **M11 - SARI:** explore a human-approved detect-to-verify remediation workflow.
 
-Azure, ACR, AKS, and Docker extend the early milestones; PostgreSQL, Kafka or another message broker, multi-region recovery, and SARI remain future capabilities. See [docs/development-roadmap.md](docs/development-roadmap.md) for the milestone sequence and [docs/application-architecture.md](docs/application-architecture.md) for the intended application evolution.
+Azure, ACR, AKS, and Docker support the implemented early milestones; PostgreSQL, Kafka or another message broker, identity-backed tenant authentication, multi-region recovery, and SARI remain future capabilities. See [docs/development-roadmap.md](docs/development-roadmap.md) for the milestone sequence and [docs/application-architecture.md](docs/application-architecture.md) for the intended application evolution.

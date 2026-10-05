@@ -12,11 +12,11 @@ Never use real customer or banking data in this POC.
 
 ## Tenant Context
 
-In M1, the API requires `X-Tenant-ID` as a deliberately simplified tenant selector. A missing header receives HTTP 400, and an unknown tenant receives HTTP 404. This mechanism is **not authentication**: it does not establish identity or prove that a caller is entitled to act for that tenant. The API validates the selected ID against known tenants and uses that server-side tenant context for all tenant-owned queries. A tenant ID in request data must never override this context. Future authentication and authorization must bind tenant selection to the caller's entitlements before the context is trusted.
+The API requires `X-Tenant-ID` as a deliberately simplified tenant selector. A missing header receives HTTP 400, and an unknown tenant receives HTTP 404. **X-Tenant-ID is a simplified tenant selector for this portfolio POC and is not an authentication or authorization mechanism.** It does not establish identity or prove that a caller is entitled to act for that tenant. The API validates and normalizes the selected ID against known tenants and uses the resulting server-side tenant context for tenant-owned queries. A tenant ID in request data must never override this context. Future identity-backed authentication and authorization must bind tenant selection to the caller's entitlements before the context is trusted.
 
 ## Isolation
 
-M1 provides application-level tenant context and explicit `tenant_id` filtering for tenant-owned API data access, with tests for same-tenant access and denied cross-tenant reads. The frontend is not a security boundary. M5 is intended to add stronger production-style isolation controls at the platform/infrastructure level. Stronger separation (such as per-schema, per-database, or dedicated deployments) may be evaluated against security requirements, cost, and operational complexity; no hard infrastructure isolation is claimed for M1.
+The application provides tenant context and tenant-scoped data access, with tests for same-tenant access and denied cross-tenant reads. M5 adds a tenant-scoped repository boundary and AKS namespace/workload controls. These are application-level tenant isolation and Kubernetes workload-level controls, respectively; neither creates a hard per-tenant infrastructure boundary. Stronger separation (such as per-schema, per-database, or dedicated deployments) may be evaluated against security requirements, cost, and operational complexity.
 
 ## Tenant-Specific Configuration
 
