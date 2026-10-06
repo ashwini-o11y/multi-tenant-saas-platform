@@ -1,0 +1,51 @@
+version: 1
+scope: global
+no_data_state: no_data
+undefined_state: undefined
+evaluation:
+  require_both_windows: true
+  comparison: strictly_greater_than
+  recovery: healthy_when_either_window_is_at_or_below_threshold
+  no_data: "If either required window has no eligible events, do not fire and do not report healthy."
+
+policies:
+  - name: fast_burn
+    slo_names:
+      - availability
+      - request-success-rate
+      - latency
+    short_window: 5m
+    long_window: 1h
+    severity: critical
+    burn_rate_threshold: 14.4
+    threshold_basis:
+      slo_window: 30d
+      budget_fraction: 0.02
+      reference_window: 1h
+      derivation: "0.02 * 30d / 1h = 14.4"
+    purpose: Detect severe reliability degradation quickly.
+
+  - name: slow_burn
+    slo_names:
+      - availability
+      - request-success-rate
+      - latency
+    short_window: 6h
+    long_window: 24h
+    severity: warning
+    burn_rate_threshold: 6
+    threshold_basis:
+      slo_window: 30d
+      budget_fraction: 0.05
+      reference_window: 6h
+      derivation: "0.05 * 30d / 6h = 6"
+    purpose: Detect sustained error-budget consumption.
+
+duplicate_signal_handling:
+  availability_and_request_success_rate: "Share the same request-ratio evaluation because their good/bad event definitions are identical."
+  latency: "Evaluate independently because its good/bad event definition includes the 500ms duration threshold."
+
+tenant_evaluation:
+  enabled: false
+  rationale: "Global service reliability is primary; do not create one alert per tenant."
+  attribution_if_enabled: validated tenant.id telemetry attribute only

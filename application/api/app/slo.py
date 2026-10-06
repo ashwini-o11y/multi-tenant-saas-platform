@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from enum import Enum
 import math
 import re
 from typing import Iterable
@@ -9,6 +10,251 @@ from typing import Iterable
 
 _WINDOW_PATTERN = re.compile(r"^[1-9]\d*[smhd]$")
 _COMPLIANCE_TOLERANCE = 1e-12
+_WINDOW_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+class AlertSeverity(str, Enum):
+    CRITICAL = "critical"
+    WARNING = "warning"
+
+
+class AlertState(str, Enum):
+    NO_DATA = "no_data"
+    UNDEFINED = "undefined"
+    HEALTHY = "healthy"
+    FIRING = "firing"
+
+
+@dataclass(frozen=True)
+class AlertPolicy:
+    name: str
+    severity: AlertSeverity
+    short_window: str
+    long_window: str
+    burn_rate_threshold: float
+    budget_fraction: float
+    threshold_reference_window: str
+    slo_names: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("alert policy name must not be empty")
+        if not isinstance(self.severity, AlertSeverity):
+            raise ValueError("alert severity must be critical or warning")
+        _duration_seconds(self.short_window)
+        _duration_seconds(self.long_window)
+        _duration_seconds(self.threshold_reference_window)
+        if _duration_seconds(self.short_window) >= _duration_seconds(self.long_window):
+            raise ValueError("short window must be shorter than long window")
+        if (
+            isinstance(self.burn_rate_threshold, bool)
+            or not isinstance(self.burn_rate_threshold, (int, float))
+            or not math.isfinite(self.burn_rate_threshold)
+            or self.burn_rate_threshold <= 0
+        ):
+            raise ValueError("burn-rate threshold must be a finite positive number")
+        if (
+            isinstance(self.budget_fraction, bool)
+            or not isinstance(self.budget_fraction, (int, float))
+            or not math.isfinite(self.budget_fraction)
+            or not 0 < self.budget_fraction <= 1
+        ):
+            raise ValueError("budget fraction must be greater than 0 and at most 1")
+        if not self.slo_names or any(
+            not isinstance(name, str) or not name.strip() for name in self.slo_names
+        ):
+            raise ValueError("alert policy must reference at least one SLO name")
+
+
+@dataclass(frozen=True)
+class AlertEvaluation:
+    policy: str
+    slo_name: str
+    severity: AlertSeverity
+    state: AlertState
+    alert: bool | None
+    short_window: str
+    long_window: str
+    short_burn_rate: float | None
+    long_burn_rate: float | None
+    burn_rate_threshold: float
+    slo_target: float
+    allowed_bad_rate: float
+    budget_fraction: float
+    threshold_reference_window: str
+    long_window_eligible_events: int
+    long_window_bad_events: int
+    long_window_allowed_bad_events: float
+    long_window_projected_budget_consumption_percent: float | None
+    recovered: bool
+    reason: str
+
+
+def _duration_seconds(window: str) -> int:
+    if not isinstance(window, str) or not _WINDOW_PATTERN.fullmatch(window):
+        raise ValueError("window must be a positive duration such as 5m or 30d")
+    return int(window[:-1]) * _WINDOW_SECONDS[window[-1]]
+
+
+def burn_rate_threshold_for_budget(
+    definition: SLODefinition,
+    budget_fraction: float,
+    over_window: str,
+) -> float:
+    if (
+        isinstance(budget_fraction, bool)
+        or not isinstance(budget_fraction, (int, float))
+        or not math.isfinite(budget_fraction)
+        or not 0 < budget_fraction <= 1
+    ):
+        raise ValueError("budget fraction must be greater than 0 and at most 1")
+    return (
+        budget_fraction
+        * _duration_seconds(definition.window)
+        / _duration_seconds(over_window)
+    )
+
+
+def evaluate_alert_policy(
+    definition: SLODefinition,
+    short_window: SLOEvaluation,
+    long_window: SLOEvaluation,
+    policy: AlertPolicy,
+    previous_state: AlertState | None = None,
+) -> AlertEvaluation:
+    if previous_state is not None and not isinstance(previous_state, AlertState):
+        raise ValueError("previous state must be a defined alert state")
+    if definition.name not in policy.slo_names:
+        raise ValueError(f"policy {policy.name!r} does not apply to {definition.name!r}")
+    expected_threshold = burn_rate_threshold_for_budget(
+        definition,
+        policy.budget_fraction,
+        policy.threshold_reference_window,
+    )
+    if not math.isclose(
+        policy.burn_rate_threshold,
+        expected_threshold,
+        rel_tol=1e-12,
+        abs_tol=1e-12,
+    ):
+        raise ValueError(
+            "configured burn-rate threshold does not match its error-budget basis"
+        )
+    for evaluation, expected_window in (
+        (short_window, policy.short_window),
+        (long_window, policy.long_window),
+    ):
+        if (
+            evaluation.name != definition.name
+            or evaluation.slo_target != definition.target
+            or not math.isclose(
+                evaluation.allowed_bad_rate,
+                1 - definition.target,
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            )
+        ):
+            raise ValueError("window evaluation does not match the configured SLO")
+        if evaluation.observed_bad_rate is not None:
+            expected_burn_rate = (
+                calculate_burn_rate(
+                    evaluation.observed_bad_rate,
+                    evaluation.allowed_bad_rate,
+                )
+                if evaluation.allowed_bad_rate > 0
+                else None
+            )
+            burn_rate_mismatch = (
+                expected_burn_rate is None and evaluation.burn_rate is not None
+            ) or (
+                expected_burn_rate is not None
+                and (
+                    evaluation.burn_rate is None
+                    or not math.isclose(
+                        evaluation.burn_rate,
+                        expected_burn_rate,
+                        rel_tol=1e-12,
+                        abs_tol=1e-12,
+                    )
+                )
+            )
+            if burn_rate_mismatch:
+                raise ValueError("window burn rate is inconsistent with its SLO")
+        if evaluation.window != expected_window:
+            raise ValueError(
+                f"policy {policy.name!r} requires a {expected_window} evaluation"
+            )
+
+    has_observations = (
+        short_window.eligible_events > 0 and long_window.eligible_events > 0
+    )
+    has_data = (
+        has_observations
+        and short_window.burn_rate is not None
+        and long_window.burn_rate is not None
+    )
+    long_window_projected_consumption = (
+        long_window.burn_rate
+        * _duration_seconds(policy.long_window)
+        / _duration_seconds(definition.window)
+        * 100
+        if has_data
+        else None
+    )
+
+    if not has_data:
+        alert = None
+        recovered = False
+        if has_observations:
+            state = AlertState.UNDEFINED
+            reason = "burn rate is undefined because the SLO allows no bad events"
+        else:
+            state = AlertState.NO_DATA
+            reason = "insufficient eligible events in one or both required windows"
+    elif (
+        short_window.burn_rate > policy.burn_rate_threshold
+        and long_window.burn_rate > policy.burn_rate_threshold
+    ):
+        state = AlertState.FIRING
+        alert = True
+        recovered = False
+        reason = (
+            "both required windows exceed the configured burn-rate threshold; "
+            "error budget is being consumed too quickly"
+        )
+    else:
+        state = AlertState.HEALTHY
+        alert = False
+        recovered = previous_state is AlertState.FIRING
+        reason = (
+            "required windows are below or equal to the configured burn-rate "
+            "threshold"
+        )
+        if recovered:
+            reason = f"recovered: {reason}"
+
+    return AlertEvaluation(
+        policy=policy.name,
+        slo_name=definition.name,
+        severity=policy.severity,
+        state=state,
+        alert=alert,
+        short_window=policy.short_window,
+        long_window=policy.long_window,
+        short_burn_rate=short_window.burn_rate,
+        long_burn_rate=long_window.burn_rate,
+        burn_rate_threshold=policy.burn_rate_threshold,
+        slo_target=definition.target,
+        allowed_bad_rate=short_window.allowed_bad_rate,
+        budget_fraction=policy.budget_fraction,
+        threshold_reference_window=policy.threshold_reference_window,
+        long_window_eligible_events=long_window.eligible_events,
+        long_window_bad_events=long_window.bad_events,
+        long_window_allowed_bad_events=long_window.allowed_bad_events,
+        long_window_projected_budget_consumption_percent=long_window_projected_consumption,
+        recovered=recovered,
+        reason=reason,
+    )
 
 
 @dataclass(frozen=True)

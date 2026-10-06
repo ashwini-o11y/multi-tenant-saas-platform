@@ -152,15 +152,36 @@ For a target `T`, the allowed bad rate is `1 - T`. For `N` eligible events, the 
 
 Burn rate is `observed_bad_rate / allowed_bad_rate`. A value above `1.0` means the observed bad-event rate is faster than allowed, and below `1.0` means it is slower. A zero allowed bad rate has no finite burn-rate interpretation; the standalone calculation raises an explicit `ValueError`, and the evaluation result reports no burn rate for a 100% target.
 
-The evaluator accepts any positive duration window, not just 30 days. The configuration lists `5m`, `1h`, `6h`, `24h`, and `30d`; 30 days is the initial configured objective window. Shorter windows will support burn-rate alerting in M8.4, but this milestone creates no alert rules or notifications.
+The evaluator accepts any positive duration window, not just 30 days. The configuration lists `5m`, `1h`, `6h`, `24h`, and `30d`; 30 days is the initial configured objective window.
 
 The mapping reuses `saas.http.server.request.count` for request counts and status, and `saas.http.server.request.duration` for duration (recorded in seconds). Both existing instruments carry the matched `http.route` and status attributes; the SLO definitions filter `/health`. No duplicate HTTP instrumentation, recording rules, or new backend runtime is required. The current implementation evaluates supplied observations; it does not claim automatic backend querying or end-to-end LGTM SLO evaluation. The M8.2 Docker networking limitation documented above remains unchanged.
 
 The global service SLO is primary. Optional tenant-specific evaluations can reuse the same calculation for telemetry already grouped by the existing `tenant.id` attribute, which is populated only from validated tenant context. The calculation API does not accept tenant identifiers, preventing client-supplied raw `X-Tenant-ID` values from becoming SLO attribution. Tenant-scoped evaluation should be used selectively and must not create additional high-cardinality metric dimensions.
 
+## M8.4 - Multi-window reliability alert evaluation
+
+Reliability alerts should signal excessive consumption of the SLO error budget, rather than unrelated infrastructure symptoms or arbitrary resource thresholds. M8.4 adds deterministic multi-window policy evaluation in the existing calculation module; its machine-readable configuration is [alert-policy.yaml](../observability/slo/alert-policy.yaml).
+
+Burn rate is the observed bad-event rate divided by the allowed bad-event rate from M8.3. A burn rate of `1` consumes budget at exactly the SLO-allowed pace; a higher rate consumes it faster. Thresholds are derived from an explicit fraction of the 30-day error budget consumed over a reference period:
+
+| Policy | Short / long windows | Severity | Basis | Threshold |
+| --- | --- | --- | --- | ---: |
+| Fast burn | 5m / 1h | Critical | 2% of the 30-day budget in 1h: `0.02 × 30d / 1h` | 14.4x |
+| Slow burn | 6h / 24h | Warning | 5% of the 30-day budget in 6h: `0.05 × 30d / 6h` | 6x |
+
+The threshold values and derivation inputs are explicit in the YAML policy and checked by the evaluator, so a mismatched threshold cannot silently take effect. Fast burn is intended to detect severe degradation; slow burn detects sustained budget consumption. In each policy **both** windows must be strictly above threshold. The long window rejects a brief spike as sustained degradation, while the short window confirms the service is still burning rapidly. At or below threshold in either window is healthy for that policy.
+
+Each result includes the SLO, policy, severity, both windows and burn rates, threshold, SLO target, allowed bad rate, long-window event/budget context, projected budget consumption, state, and reason. States include `firing`, `healthy`, `no_data`, and `undefined`. If either window has no eligible events, the result is `no_data`, not healthy and not firing. If data exists but the target permits no bad events, burn rate is undefined and the policy reports `undefined`; it does not claim healthy or fire. These states avoid false confidence without creating an alert from absent traffic or undefined math. If a prior evaluation was firing and subsequent data has either window at or below threshold, the policy returns healthy with an explicit recovery indication. No-data or undefined alone does not signal recovery.
+
+Policies can evaluate availability, request success rate, and latency. Availability and request success rate intentionally share a single signal evaluation because their current good/bad definitions are identical; they remain separately named in result metadata. Latency is evaluated separately because its bad events also include successful requests slower than 500 ms. The global service-level signal is primary. Per-tenant alerting is disabled by default; if later enabled, attribution must use the existing validated `tenant.id` context, not raw `X-Tenant-ID`, and one-alert-per-tenant fan-out must be considered for cardinality and operational noise.
+
+This policy layer consumes the same SLO target and error-budget semantics as M8.3 and does not add API instrumentation. The OTEL-LGTM backend is retained. Although it stores Prometheus-compatible metrics, this repository has no Prometheus/Grafana rule provisioning integration, and the exact exported names/labels for these custom OTel instruments have not been validated. Therefore no speculative PromQL rules were added and the machine-readable policies are not automatically installed into Grafana. Evaluation is deterministic when supplied observations; end-to-end LGTM rule evaluation or alert firing has not been verified. The M8.2 container-networking limitation remains unchanged.
+
+M8.4 does not deliver notifications, page responders, automate incident handling, restart workloads, or perform remediation. It adds no PagerDuty, Slack, Teams, or email integration and no infrastructure CPU/memory alert rules.
+
 ## Roadmap
 
 - **M8.3:** implemented SLIs, SLOs, error-budget, and burn-rate calculations.
-- **M8.4:** add reliability alerting using the burn-rate signals and short observation windows.
+- **M8.4:** implemented deterministic multi-window burn-rate policy evaluation. Backend provisioning and notification delivery remain future enhancements.
 
-This increment does not add dashboards, alert rules, alertmanager, incident automation, or integrations with enterprise backends.
+This increment does not add dashboards, installed Grafana alert rules, alertmanager, incident automation, or integrations with enterprise backends.
