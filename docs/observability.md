@@ -134,9 +134,33 @@ kubectl kustomize kubernetes/overlays/dev
 
 The API sends OTLP/HTTP to the in-namespace Collector service. NetworkPolicies allow only the API-to-Collector and Collector-to-backend telemetry paths plus Collector DNS. The backend is a ClusterIP service; inspect its UI locally with `kubectl -n mt-saas port-forward service/observability-backend 3000:3000`. Workloads use non-root identities, dropped capabilities, resource bounds, health probes, no service-account token, and no privileged or host-network access. The backend uses ephemeral storage and the local manifests do not deploy to Azure.
 
+## M8.3 - Service-level indicators, objectives, and error budgets
+
+An **SLI** is a measured indicator of service behavior. An **SLO** sets the target and measurement window for that indicator. The **error budget** is the maximum bad-event rate allowed by the SLO, expressed over the eligible events in the window. The machine-readable definitions are in [observability/slo/slo.yaml](../observability/slo/slo.yaml); deterministic calculations are implemented in [slo.py](../application/api/app/slo.py) and do not depend on FastAPI request handling or an exporter.
+
+The primary evaluation is service-wide over a rolling **30-day** window:
+
+| SLI | Target | Eligible requests | Good request |
+| --- | ---: | --- | --- |
+| Availability | 99.9% | Application HTTP requests except `/health` | HTTP status below 500 |
+| Request success rate | 99.9% | Application HTTP requests except `/health` | HTTP status below 500 |
+| Latency | 99% | Application HTTP requests except `/health` | HTTP status below 500 and duration at or below 500 ms |
+
+Availability and request success rate intentionally use the same signal and definition in this milestone. Keeping both named SLIs makes their intended use explicit while avoiding unsupported distinctions in the current metric model. A 4xx response is not an availability failure: it indicates a client/request error rather than service-side unavailability. The latency SLI is evaluated separately; 5xx responses and requests above 500 ms are not good latency events. `/health` is excluded so probe traffic does not dominate user-facing service objectives.
+
+For a target `T`, the allowed bad rate is `1 - T`. For `N` eligible events, the error budget is `N * (1 - T)` events. If `B` bad events were observed, consumed budget is `B / error_budget`, remaining budget is `max(error_budget - B, 0)`, and the remaining percentage is the remaining budget divided by the error budget. Consumption is not capped at 100%, so an exceeded budget remains measurable. With zero eligible events, SLI, compliance, observed rate, burn rate, and budget percentages are undefined rather than treated as success; the event budget is zero.
+
+Burn rate is `observed_bad_rate / allowed_bad_rate`. A value above `1.0` means the observed bad-event rate is faster than allowed, and below `1.0` means it is slower. A zero allowed bad rate has no finite burn-rate interpretation; the standalone calculation raises an explicit `ValueError`, and the evaluation result reports no burn rate for a 100% target.
+
+The evaluator accepts any positive duration window, not just 30 days. The configuration lists `5m`, `1h`, `6h`, `24h`, and `30d`; 30 days is the initial configured objective window. Shorter windows will support burn-rate alerting in M8.4, but this milestone creates no alert rules or notifications.
+
+The mapping reuses `saas.http.server.request.count` for request counts and status, and `saas.http.server.request.duration` for duration (recorded in seconds). Both existing instruments carry the matched `http.route` and status attributes; the SLO definitions filter `/health`. No duplicate HTTP instrumentation, recording rules, or new backend runtime is required. The current implementation evaluates supplied observations; it does not claim automatic backend querying or end-to-end LGTM SLO evaluation. The M8.2 Docker networking limitation documented above remains unchanged.
+
+The global service SLO is primary. Optional tenant-specific evaluations can reuse the same calculation for telemetry already grouped by the existing `tenant.id` attribute, which is populated only from validated tenant context. The calculation API does not accept tenant identifiers, preventing client-supplied raw `X-Tenant-ID` values from becoming SLO attribution. Tenant-scoped evaluation should be used selectively and must not create additional high-cardinality metric dimensions.
+
 ## Roadmap
 
-- **M8.3:** introduce SLIs, SLOs, and error budgets.
-- **M8.4:** introduce reliability alerting.
+- **M8.3:** implemented SLIs, SLOs, error-budget, and burn-rate calculations.
+- **M8.4:** add reliability alerting using the burn-rate signals and short observation windows.
 
-Neither milestone is implemented here. This increment does not add dashboards, alert rules, alertmanager, incident automation, or integrations with enterprise backends.
+This increment does not add dashboards, alert rules, alertmanager, incident automation, or integrations with enterprise backends.

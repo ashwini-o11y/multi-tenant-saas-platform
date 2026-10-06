@@ -6,7 +6,7 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M8.2 - Observability Backend
+## Current Milestone: M8.3 - SLI/SLO and Error Budgets
 
 ```text
 Terraform -> Azure Resource Group + VNet + ACR + AKS
@@ -94,6 +94,8 @@ The named volume is intentionally retained when the stack stops. Removing it wit
 Start the API, OpenTelemetry Collector, and Grafana LGTM backend together with `docker compose up -d --build`. The API exports OTLP over HTTP to the collector and does not wait for either telemetry service to start. The backend UI is at `http://localhost:3000`; Collector OTLP and health endpoints are available on `localhost:4317`, `localhost:4318`, and `localhost:13133`. These host ports bind to loopback only.
 
 Run representative tenant requests with `curl -H 'X-Tenant-ID: bank-a' http://localhost:8000/api/v1/tenant`, and inspect metrics and traces in Grafana Explore. Structured request logs remain available in API container stdout; application log records are not yet exported over OTLP. The complete signal flow, configuration, and limitations are documented in [docs/observability.md](docs/observability.md).
+
+M8.3 adds machine-readable 30-day SLO definitions and a deterministic Python calculation library. It reuses the existing request count/duration telemetry; it does not add instrumentation, query the backend automatically, or introduce alerting. See [observability/slo/slo.yaml](observability/slo/slo.yaml) and [docs/observability.md](docs/observability.md).
 
 ## Azure Container Registry
 

@@ -13,7 +13,7 @@ The milestones evolve one fictional banking SaaS application. They are ordered t
 | M7 | SaaS CI/CD + Progressive Delivery | Validate pull requests and main, publish immutable Git-SHA images to ACR, and manually promote selected artifacts to dev with health-gated rollout and rollback. |
 | M8.1 | Observability foundation | Instrument HTTP traces/metrics and structured correlated request logs. |
 | M8.2 | Collector + backend | Implemented: Collector, Grafana LGTM, Compose wiring, and Kubernetes manifests. Local component/API health and manifest rendering passed; end-to-end telemetry and Kubernetes runtime validation remain pending due to environment networking/context limitations. |
-| M8.3 | Service objectives | Define SLIs/SLOs and error budgets from observed service behavior. |
+| M8.3 | Service objectives | Implemented: machine-readable availability, success-rate, and latency objectives; deterministic SLO/error-budget/burn-rate calculations; and unit tests. |
 | M8.4 | Reliability alerting | Add alerting for reliability objectives. |
 | M9 | FinOps + Capacity | Estimate cost per tenant, track meaningful usage, and plan capacity based on observed demand. |
 | M10 | Multi-Region DR/BCP | Define recovery objectives and validate backup, restore, failover, and business continuity procedures. |
@@ -26,7 +26,7 @@ The milestones evolve one fictional banking SaaS application. They are ordered t
 - M2-M4 introduce packaging and deployment foundations before production-style operations.
 - M5 strengthens tenant isolation through application data-access boundaries and platform controls; it does not mark the beginning of tenant scoping.
 - M6 implements application-level tenant lifecycle management. Automated AKS tenant provisioning is a future platform milestone. Its unauthenticated admin API is not a production authorization boundary.
-- M8.1 provides telemetry instrumentation and structured request logs. M8.2 implementation is complete: OTLP metrics and traces are configured through a Collector to Grafana LGTM, with structured logs remaining on stdout. Compose service health and API behavior were verified, but Codespaces container-to-container TCP timeouts prevented end-to-end ingestion verification; no Kubernetes cluster context was available for runtime validation. M8.3 and M8.4 remain future milestones.
+- M8.1 provides telemetry instrumentation and structured request logs. M8.2 implementation is complete: OTLP metrics and traces are configured through a Collector to Grafana LGTM, with structured logs remaining on stdout. Compose service health and API behavior were verified, but Codespaces container-to-container TCP timeouts prevented end-to-end ingestion verification; no Kubernetes cluster context was available for runtime validation. M8.3 defines and calculates SLIs/SLOs from supplied observations without adding a backend query service or alerting. M8.4 remains future work.
 - PostgreSQL and Kafka or another message broker are possible future application capabilities, not M1 dependencies.
 - M7-M10 build delivery and operational confidence around the same application.
 - M11 depends on trustworthy signals, controlled permissions, auditability, and human approval. It does not authorize unreviewed automated changes.

@@ -1,0 +1,52 @@
+version: 1
+service: multi-tenant-saas-api
+
+evaluation:
+  primary_scope: global
+  initial_window: 30d
+  supported_windows:
+    - 5m
+    - 1h
+    - 6h
+    - 24h
+    - 30d
+  excluded_routes:
+    - /health
+
+tenant_evaluation:
+  enabled: optional
+  attribution: validated tenant.id telemetry attribute only
+  cardinality: "Use only for scoped evaluations; do not add tenant IDs as new metric labels."
+
+slis:
+  - name: availability
+    target: 0.999
+    target_percent: 99.9
+    window: 30d
+    type: request_ratio
+    eligible: application HTTP requests excluding excluded_routes
+    good: HTTP status < 500
+    bad: HTTP status >= 500
+    metric: saas.http.server.request.count
+
+  - name: request-success-rate
+    target: 0.999
+    target_percent: 99.9
+    window: 30d
+    type: request_ratio
+    eligible: application HTTP requests excluding excluded_routes
+    good: HTTP status < 500
+    bad: HTTP status >= 500
+    metric: saas.http.server.request.count
+    rationale: Intentionally aligned with availability for this milestone.
+
+  - name: latency
+    target: 0.99
+    target_percent: 99
+    window: 30d
+    type: latency_threshold
+    threshold_ms: 500
+    eligible: application HTTP requests excluding excluded_routes
+    good: HTTP status < 500 and duration <= threshold_ms
+    bad: HTTP status >= 500 or duration > threshold_ms
+    metric: saas.http.server.request.duration
