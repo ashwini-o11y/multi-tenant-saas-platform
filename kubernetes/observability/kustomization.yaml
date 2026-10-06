@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mt-saas
+configMapGenerator:
+  - name: otel-collector-config
+    files:
+      - collector-config.yaml
+resources:
+  - collector-deployment.yaml
+  - collector-service.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - observability-network-policy.yaml

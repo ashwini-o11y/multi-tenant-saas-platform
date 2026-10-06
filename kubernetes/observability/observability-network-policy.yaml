@@ -1,0 +1,79 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-to-otel-collector
+spec:
+  podSelector:
+    matchLabels:
+      app: multi-tenant-saas-api
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: otel-collector
+      ports:
+        - protocol: TCP
+          port: 4318
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: otel-collector-traffic
+spec:
+  podSelector:
+    matchLabels:
+      app: otel-collector
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: multi-tenant-saas-api
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: observability-backend
+      ports:
+        - protocol: TCP
+          port: 4317
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: collector-to-observability-backend
+spec:
+  podSelector:
+    matchLabels:
+      app: observability-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: otel-collector
+      ports:
+        - protocol: TCP
+          port: 4317

@@ -6,7 +6,7 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M8.1 - Observability Foundation
+## Current Milestone: M8.2 - Observability Backend
 
 ```text
 Terraform -> Azure Resource Group + VNet + ACR + AKS
@@ -15,7 +15,13 @@ Terraform -> Azure Resource Group + VNet + ACR + AKS
                           Kubernetes API Deployment
                                       |
                                       v
-                             FastAPI + SQLite
+                          FastAPI + SQLite
+                              | OTLP
+                              v
+                       OpenTelemetry Collector
+                              |
+                              v
+                 Grafana LGTM local observability backend
 ```
 
 The M1 application provides a small tenant-aware customer and transaction view for `bank-a`, `bank-b`, and `bank-c`. The API validates a centralized tenant context and uses tenant-scoped data access. **X-Tenant-ID is a simplified tenant selector for this portfolio POC and is not an authentication or authorization mechanism.** Anyone able to reach this demo can select a tenant; identity-backed tenant authentication and authorization remain future work.
@@ -83,6 +89,12 @@ docker compose down
 
 The named volume is intentionally retained when the stack stops. Removing it with `docker compose down -v` deletes the local SQLite data.
 
+## M8.2 - Local Observability Stack
+
+Start the API, OpenTelemetry Collector, and Grafana LGTM backend together with `docker compose up -d --build`. The API exports OTLP over HTTP to the collector and does not wait for either telemetry service to start. The backend UI is at `http://localhost:3000`; Collector OTLP and health endpoints are available on `localhost:4317`, `localhost:4318`, and `localhost:13133`. These host ports bind to loopback only.
+
+Run representative tenant requests with `curl -H 'X-Tenant-ID: bank-a' http://localhost:8000/api/v1/tenant`, and inspect metrics and traces in Grafana Explore. Structured request logs remain available in API container stdout; application log records are not yet exported over OTLP. The complete signal flow, configuration, and limitations are documented in [docs/observability.md](docs/observability.md).
+
 ## Azure Container Registry
 
 Prerequisites: Azure CLI, Docker, an Azure subscription, permission to create the resource group and registry, and `AcrPush` access to the registry. Sign in and select the subscription, then create the development resource group and Basic registry (choose a globally unique lowercase registry name):
@@ -136,9 +148,9 @@ M6 adds administrative tenant creation, lookup, listing, suspension, activation,
 
 M7 adds pull-request/main CI, Git-SHA-tagged ACR publishing from `main`, and a separately dispatched dev deployment that consumes a selected immutable image tag. The dev rollout uses Kubernetes readiness gates and automatic rollback on timeout; deployment release identity is recorded in pod-template metadata. See [docs/cicd.md](docs/cicd.md) and [docs/release-management.md](docs/release-management.md).
 
-## M8.1 - Observability Foundation
+## M8 - Observability + SLO
 
-M8.1 instruments the existing FastAPI service with OpenTelemetry HTTP traces and metrics, tenant-aware reliability attributes from validated tenant context, and structured request logs correlated with trace IDs. Telemetry is disabled by default and OTLP export is environment-configured. This increment does not implement SLOs, error budgets, alerting, or an observability backend. See [docs/observability.md](docs/observability.md).
+M8.1 added FastAPI OpenTelemetry traces/metrics and structured correlated stdout request logs. M8.2 implements a local OpenTelemetry Collector and Grafana LGTM backend, plus Kubernetes-ready manifests. Host-side component health and API checks passed, but container-to-container TCP timeouts in this Codespaces Docker environment prevented end-to-end telemetry ingestion from being verified; no Kubernetes context was available for cluster validation. See [docs/observability.md](docs/observability.md) for evidence. M8.3 will define SLIs, SLOs, and error budgets; M8.4 will add reliability alerting.
 
 ## Milestone Roadmap
 
