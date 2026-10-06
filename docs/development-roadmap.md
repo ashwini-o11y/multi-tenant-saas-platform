@@ -11,7 +11,7 @@ The milestones evolve one fictional banking SaaS application. They are ordered t
 | M5 | Strong Tenant Isolation & Platform Controls | Centralize tenant context and data access; add Kubernetes workload security, resource governance, and network policy controls. |
 | M6 | Tenant Onboarding & Lifecycle | Onboard tenants through an application control plane, persist lifecycle state, enforce allowed transitions, and retain tenant data on suspension/deactivation. Automated AKS provisioning remains future work. |
 | M7 | SaaS CI/CD + Progressive Delivery | Validate pull requests and main, publish immutable Git-SHA images to ACR, and manually promote selected artifacts to dev with health-gated rollout and rollback. |
-| M8 | Observability + SLO | Add OpenTelemetry signals, dashboards, alerts, SLIs, SLOs, and error-budget practices. |
+| M8 | Observability + SLO | M8.1 establishes OpenTelemetry HTTP traces/metrics and structured correlated logs; later increments add a backend, SLIs/SLOs, error budgets, and alerting. |
 | M9 | FinOps + Capacity | Estimate cost per tenant, track meaningful usage, and plan capacity based on observed demand. |
 | M10 | Multi-Region DR/BCP | Define recovery objectives and validate backup, restore, failover, and business continuity procedures. |
 | M11 | SARI | Add a bounded workflow for detection, correlation, diagnosis, remediation recommendation, human approval, remediation, and verification. |
@@ -23,6 +23,7 @@ The milestones evolve one fictional banking SaaS application. They are ordered t
 - M2-M4 introduce packaging and deployment foundations before production-style operations.
 - M5 strengthens tenant isolation through application data-access boundaries and platform controls; it does not mark the beginning of tenant scoping.
 - M6 implements application-level tenant lifecycle management. Automated AKS tenant provisioning is a future platform milestone. Its unauthenticated admin API is not a production authorization boundary.
+- M8.1 provides collector-optional telemetry instrumentation and structured request logs; it does not implement SLO calculations, error budgets, alerting, or a telemetry backend.
 - PostgreSQL and Kafka or another message broker are possible future application capabilities, not M1 dependencies.
 - M7-M10 build delivery and operational confidence around the same application.
 - M11 depends on trustworthy signals, controlled permissions, auditability, and human approval. It does not authorize unreviewed automated changes.

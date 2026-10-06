@@ -4,4 +4,8 @@ metadata:
   name: multi-tenant-saas-api-config
   namespace: mt-saas
 data:
+  APP_VERSION: "1.0.0"
   DATABASE_PATH: /data/app.db
+  DEPLOYMENT_ENVIRONMENT: dev
+  OTEL_ENABLED: "false"
+  OTEL_SERVICE_NAME: multi-tenant-saas-api

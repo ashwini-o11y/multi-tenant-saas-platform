@@ -6,7 +6,7 @@ A single evolving fictional banking SaaS application for demonstrating increment
 
 This is a fictional portfolio/proof-of-concept (POC) application, not a production banking system. No real banking or customer data is used. Do not use it for real financial activity, sensitive data, or production workloads.
 
-## Current Milestone: M7 - SaaS CI/CD + Progressive Delivery
+## Current Milestone: M8.1 - Observability Foundation
 
 ```text
 Terraform -> Azure Resource Group + VNet + ACR + AKS
@@ -136,6 +136,10 @@ M6 adds administrative tenant creation, lookup, listing, suspension, activation,
 
 M7 adds pull-request/main CI, Git-SHA-tagged ACR publishing from `main`, and a separately dispatched dev deployment that consumes a selected immutable image tag. The dev rollout uses Kubernetes readiness gates and automatic rollback on timeout; deployment release identity is recorded in pod-template metadata. See [docs/cicd.md](docs/cicd.md) and [docs/release-management.md](docs/release-management.md).
 
+## M8.1 - Observability Foundation
+
+M8.1 instruments the existing FastAPI service with OpenTelemetry HTTP traces and metrics, tenant-aware reliability attributes from validated tenant context, and structured request logs correlated with trace IDs. Telemetry is disabled by default and OTLP export is environment-configured. This increment does not implement SLOs, error budgets, alerting, or an observability backend. See [docs/observability.md](docs/observability.md).
+
 ## Milestone Roadmap
 
 1. **M1 - Application:** frontend, FastAPI, SQLite, tenant context, and tenant-scoped data access.
@@ -145,7 +149,7 @@ M7 adds pull-request/main CI, Git-SHA-tagged ACR publishing from `main`, and a s
 5. **M5 - Strong Tenant Isolation & Platform Controls:** centralize tenant-scoped API access and add Kubernetes workload isolation and governance.
 6. **M6 - Tenant Onboarding & Lifecycle:** onboard tenants through an application control plane and enforce persisted lifecycle states.
 7. **M7 - CI/CD + Progressive Delivery:** validate changes, publish Git-SHA artifacts, and deploy with health-gated rollout and rollback.
-8. **M8 - Observability + SLO:** add telemetry, dashboards, alerts, SLIs, SLOs, and error-budget practices.
+8. **M8 - Observability + SLO:** M8.1 establishes OpenTelemetry signals and structured logs; later increments will define SLIs/SLOs, error budgets, and alerting.
 9. **M9 - FinOps + Capacity:** model tenant costs and plan capacity from observed demand.
 10. **M10 - Multi-Region DR/BCP:** define and test disaster recovery and business continuity.
 11. **M11 - SARI:** explore a human-approved detect-to-verify remediation workflow.

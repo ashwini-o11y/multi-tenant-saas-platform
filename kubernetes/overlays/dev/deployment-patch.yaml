@@ -8,6 +8,15 @@ spec:
     metadata:
       annotations:
         app.kubernetes.io/version: REPLACE_WITH_GIT_SHA
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: APP_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-release
+                  key: APP_VERSION
   strategy:
     type: RollingUpdate
     rollingUpdate:

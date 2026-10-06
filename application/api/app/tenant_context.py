@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
+from opentelemetry.trace import get_current_span
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -15,6 +16,7 @@ class TenantContext:
 
 
 def get_tenant_context(
+    request: Request,
     tenant_id: Annotated[str | None, Header(alias="X-Tenant-ID")] = None,
     session: Session = Depends(get_db),
 ) -> TenantContext:
@@ -28,4 +30,7 @@ def get_tenant_context(
     if tenant.status is not TenantStatus.ACTIVE:
         raise HTTPException(status_code=403, detail="Tenant is not active")
 
-    return TenantContext(tenant_id=tenant.tenant_id, tenant=tenant)
+    context = TenantContext(tenant_id=tenant.tenant_id, tenant=tenant)
+    request.state.tenant_id = context.tenant_id
+    get_current_span().set_attribute("tenant.id", context.tenant_id)
+    return context

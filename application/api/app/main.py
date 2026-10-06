@@ -2,11 +2,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.observability import (
+    RequestTelemetryMiddleware,
+    TelemetryRuntime,
+    configure_request_logging,
+    configure_telemetry,
+)
 from app.routes import admin_tenants, customers, health, tenant, transactions
 from app.tenant_errors import TenantLifecycleError
 
 
-def create_app() -> FastAPI:
+def create_app(telemetry_runtime: TelemetryRuntime | None = None) -> FastAPI:
+    telemetry_runtime = telemetry_runtime or configure_telemetry()
+    configure_request_logging(telemetry_runtime.settings)
     application = FastAPI(title="Multi-Tenant Banking SaaS API", version="1.0.0")
     application.add_middleware(
         CORSMiddleware,
@@ -27,6 +35,13 @@ def create_app() -> FastAPI:
     application.include_router(tenant.router)
     application.include_router(customers.router)
     application.include_router(transactions.router)
+    application.add_middleware(
+        RequestTelemetryMiddleware,
+        telemetry=telemetry_runtime,
+    )
+    telemetry_runtime.instrument(application)
+    if telemetry_runtime.settings.enabled:
+        application.add_event_handler("shutdown", telemetry_runtime.shutdown)
     return application
 
 
